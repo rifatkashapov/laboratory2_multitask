@@ -1,5 +1,6 @@
 /**
  * Kashapov R.R. 6122
+ * 6 вариант
  * BDJN
  * B – потоки одного процесса;
  * D – семафоры;
@@ -8,15 +9,12 @@
  **/
 
 #include <stdio.h>
-#include <errno.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <semaphore.h>
 #include <netinet/in.h>
 #include <iostream>
-#include <sstream>
-#include <pthread.h>
-#include <signal.h>
+#include <vector>
 #include "summa.cpp"
 #include "division.cpp"
 #include "power.cpp"
@@ -55,7 +53,7 @@ void *serverThread(void *args) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(MAIN_SERVER_PORT);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    bind(sock, (struct sockaddr *)&addr, sizeof(addr));
+    bind(sock, (struct sockaddr *) &addr, sizeof(addr));
     sem_post(&server_main_empty);
     while (1) {
         int ConnectFD = accept(sock, NULL, NULL);
@@ -69,15 +67,14 @@ void *clientMainThread(void *args) {
     int sock_out;
     struct sockaddr_in addr_out;
     // client socket
-    while(1) {
+    while (1) {
         sem_wait(&client_main_empty);
         sock_out = socket(AF_INET, SOCK_DGRAM, 0);
         addr_out.sin_family = AF_INET;
         addr_out.sin_port = htons(clientStruct.port);
         addr_out.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         // отправить результат
-
-        connect(sock_out, (struct sockaddr *)&addr_out, sizeof(addr_out));
+        connect(sock_out, (struct sockaddr *) &addr_out, sizeof(addr_out));
         send(sock_out, &clientStruct.values, sizeof(clientStruct.values), 0);
         close(sock_out);
 //        sem_post(&client_main_full);
@@ -85,8 +82,7 @@ void *clientMainThread(void *args) {
 }
 
 
-
-double executeAction(Operations operations, Variables *args ) {
+double executeAction(Operations operations, Variables *args) {
     clientStruct.values = args;
     switch (operations) {
         case ADD:
@@ -105,7 +101,8 @@ double executeAction(Operations operations, Variables *args ) {
             clientStruct.port = SUB_SERVER_PORT;
             sem_post(&server_sub_empty);
             break;
-        default: break;
+        default:
+            break;
     }
 
     sem_wait(&server_main_full);
@@ -125,46 +122,50 @@ int main() {
     int *pow_thread_state = &one;
     int *sub_thread_state = &one;
 
-    sem_init(&server_sum_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&client_sum_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&server_main_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&client_main_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&server_div_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&client_div_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&server_pow_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&client_pow_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&server_sub_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-    sem_init(&client_sub_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
+    sem_init(&server_sum_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&client_sum_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&server_main_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&client_main_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&server_div_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&client_div_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&server_pow_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&client_pow_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&server_sub_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
+    sem_init(&client_sub_empty, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
 
-    sem_init(&sum_state,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
+    sem_init(&sum_state, PTHREAD_PROCESS_SHARED, 0); // Установлен в 0
 
     SummaInitArgs summaInitArgs = {&server_sum_empty, sum_thread_state, &server_main_empty, &client_main_empty};
     DivisionInitArgs divInitArgs = {&server_div_empty, div_thread_state, &server_main_empty, &client_main_empty};
     PowerInitArgs powInitArgs = {&server_pow_empty, pow_thread_state, &server_main_empty, &client_main_empty};
     SubInitArgs subInitArgs = {&server_sub_empty, sub_thread_state, &server_main_empty, &client_main_empty};
 
-    int array_size;
+    int array_size = 0;
     std::printf("please input array size: ");
     std::cin >> array_size;
 
     std::printf("\nplease input array values: \n");
-    double arr[3] = { 0 };
+    std::vector<double> arr(array_size);
 
     for (int i = 0; i < array_size; i++) {
         std::cin >> arr[i];
     }
 
-
-    status1 = pthread_create(&threadMainServer, NULL, serverThread, NULL); handleError(status1);
-    status1 = pthread_create(&threadSum, NULL, summa, &summaInitArgs); handleError(status1);
-    status1 = pthread_create(&threadDiv, NULL, division, &divInitArgs); handleError(status1);
-    status1 = pthread_create(&threadPow, NULL, power, &powInitArgs); handleError(status1);
-    status1 = pthread_create(&threadSub, NULL, subtraction, &subInitArgs); handleError(status1);
-    status1 = pthread_create(&threadMainClient, NULL, clientMainThread, NULL); handleError(status1);
+    status1 = pthread_create(&threadMainServer, NULL, serverThread, NULL);
+    handleError(status1);
+    status1 = pthread_create(&threadSum, NULL, summa, &summaInitArgs);
+    handleError(status1);
+    status1 = pthread_create(&threadDiv, NULL, division, &divInitArgs);
+    handleError(status1);
+    status1 = pthread_create(&threadPow, NULL, power, &powInitArgs);
+    handleError(status1);
+    status1 = pthread_create(&threadSub, NULL, subtraction, &subInitArgs);
+    handleError(status1);
+    status1 = pthread_create(&threadMainClient, NULL, clientMainThread, NULL);
+    handleError(status1);
 
     double res = 0.0;
     Variables args;
-
 
     for (int i = 0; i < array_size; i++) {
         args = {res, arr[i]};
@@ -196,10 +197,14 @@ int main() {
     sem_post(&server_pow_empty);
     sem_post(&server_sub_empty);
 
-    status1 = pthread_join(threadSum, (void**)&status_addr); handleError(status1);
-    status1 = pthread_join(threadDiv, (void**)&status_addr); handleError(status1);
-    status1 = pthread_join(threadPow, (void**)&status_addr); handleError(status1);
-    status1 = pthread_join(threadSub, (void**)&status_addr); handleError(status1);
+    status1 = pthread_join(threadSum, (void **) &status_addr);
+    handleError(status1);
+    status1 = pthread_join(threadDiv, (void **) &status_addr);
+    handleError(status1);
+    status1 = pthread_join(threadPow, (void **) &status_addr);
+    handleError(status1);
+    status1 = pthread_join(threadSub, (void **) &status_addr);
+    handleError(status1);
     printf("Результат фукнции выборочной дисперсии %f \n", res);
     std::printf("main thread stop\n");
     return 0;
