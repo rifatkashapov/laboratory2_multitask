@@ -18,7 +18,7 @@ void *division(void *args) {
     DivisionInitArgs arguments = * (DivisionInitArgs * ) args;
     Variables *value;
     //server socket
-    while (div_thread_state) {
+    while (1) {
         sem_wait(arguments.server_div_empty);
         if (*arguments.thread_state == 0) break;
         sock_in = socket(AF_INET, SOCK_DGRAM, 0);

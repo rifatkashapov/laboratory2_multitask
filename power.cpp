@@ -18,7 +18,7 @@ void *power(void *args) {
     PowerInitArgs arguments = * (PowerInitArgs * ) args;
     Variables *value;
 
-    while (pow_thread_state) {
+    while (1) {
         sem_wait(arguments.server_pow_empty);
         if (*arguments.thread_state == 0) break;
         sock_in = socket(AF_INET, SOCK_DGRAM, 0);

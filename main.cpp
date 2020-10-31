@@ -4,7 +4,7 @@
  * B – потоки одного процесса;
  * D – семафоры;
  * J – сокеты;
- * N – выборочная дисперсия трех чисел;
+ * N – выборочная дисперсия n чисел;
  **/
 
 #include <stdio.h>
@@ -166,21 +166,27 @@ int main() {
     Variables args;
 
 
-    for (int i = 0; i < array_size-1; i++) {
-        args = {arr[i], arr[i+1]};
+    for (int i = 0; i < array_size; i++) {
+        args = {res, arr[i]};
         res = executeAction(ADD, &args);
     }
 
+    args = {res, (array_size) * 1.0};
+    double X_vector = executeAction(DIV, &args);
+
+    res = 0.0;
+    double temp;
+    for (int i = 0; i < array_size; i++) {
+        args = {arr[i], X_vector};
+        temp = executeAction(SUB, &args);
+        args = {temp, 2};
+        temp = executeAction(POW, &args);
+        args = {res, temp};
+        res = executeAction(ADD, &args);
+    }
     args = {res, array_size * 1.0};
-    double X_vector = executeAction(SUB, &args);
+    res = executeAction(DIV, &args);
 
-    printf("%f ", X_vector);
-//    executeAction(ADD, &sumArgs);
-//    executeAction(DIV, &divArgs);
-//    executeAction(POW, &powArgs);
-//    executeAction(SUB, &subArgs);
-
-    ///
     *sum_thread_state = 0;
     *div_thread_state = 0;
     *pow_thread_state = 0;

@@ -19,7 +19,7 @@ void *subtraction(void *args) {
     SubInitArgs arguments = * (SubInitArgs * ) args;
     Variables *value;
 
-    while (sub_thread_state) {
+    while (1) {
         sem_wait(arguments.server_sub_empty);
         if (*arguments.thread_state == 0) break;
         sock_in = socket(AF_INET, SOCK_DGRAM, 0);
