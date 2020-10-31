@@ -4,14 +4,9 @@
 
 struct DivisionInitArgs {
     sem_t *server_div_empty;
-    sem_t *client_div_empty;
+    int *thread_state;
     sem_t *server_main_empty;
     sem_t *client_main_empty;
-};
-
-struct DivisionArgs {
-    double a;
-    double b;
 };
 
 void *division(void *args) {
@@ -21,10 +16,11 @@ void *division(void *args) {
     struct sockaddr_in addr_out, addr_in;
 
     DivisionInitArgs arguments = * (DivisionInitArgs * ) args;
-    DivisionArgs *value;
+    Variables *value;
     //server socket
-    while (1) {
+    while (div_thread_state) {
         sem_wait(arguments.server_div_empty);
+        if (*arguments.thread_state == 0) break;
         sock_in = socket(AF_INET, SOCK_DGRAM, 0);
         addr_in.sin_family = AF_INET;
         addr_in.sin_port = htons(DIVISION_SERVER_PORT);
@@ -32,8 +28,9 @@ void *division(void *args) {
         bind(sock_in, (struct sockaddr *)&addr_in, sizeof(addr_in));
         sem_post(arguments.client_main_empty);
         int ConnectFD = accept(sock_in, NULL, NULL);
+        printf("server 'division' receive data\n");
         recvfrom(sock_in, reinterpret_cast<void *> (&value), sizeof(value), 0, NULL, NULL);
-        DivisionArgs args = * (DivisionArgs *) value;
+        Variables args = * (Variables *) value;
 //        printf("%f %f\n", args.a, args.b);
         close(ConnectFD);
         close(sock_in);
@@ -49,7 +46,7 @@ void *division(void *args) {
         addr_out.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         // sem_wait(arguments.semaphoreEmpty);
         // отправить результат
-
+        printf("client 'division' send data %f \n", result);
         connect(sock_out, (struct sockaddr *)&addr_out, sizeof(addr_out));
         send(sock_out, &result, sizeof(result), 0);
         close(sock_out);

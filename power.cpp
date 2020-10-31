@@ -4,14 +4,9 @@
 
 struct PowerInitArgs {
     sem_t *server_pow_empty;
-    sem_t *client_pow_empty;
+    int *thread_state;
     sem_t *server_main_empty;
     sem_t *client_main_empty;
-};
-
-struct PowerArgs {
-    double a;
-    double b;
 };
 
 void *power(void *args) {
@@ -21,10 +16,11 @@ void *power(void *args) {
     struct sockaddr_in addr_out, addr_in;
     int *threadState;
     PowerInitArgs arguments = * (PowerInitArgs * ) args;
-    PowerArgs *value;
+    Variables *value;
 
-    while (1) {
+    while (pow_thread_state) {
         sem_wait(arguments.server_pow_empty);
+        if (*arguments.thread_state == 0) break;
         sock_in = socket(AF_INET, SOCK_DGRAM, 0);
         addr_in.sin_family = AF_INET;
         addr_in.sin_port = htons(POW_SERVER_PORT);
@@ -32,8 +28,9 @@ void *power(void *args) {
         bind(sock_in, (struct sockaddr *)&addr_in, sizeof(addr_in));
         sem_post(arguments.client_main_empty);
         int ConnectFD = accept(sock_in, NULL, NULL);
+        printf("server 'power' receive data \n");
         recvfrom(sock_in, reinterpret_cast<void *> (&value), sizeof(value), 0, NULL, NULL);
-        PowerArgs args = * (PowerArgs *) value;
+        Variables args = * (Variables *) value;
 //        printf("%f %f\n", args.a, args.b);
         close(ConnectFD);
         close(sock_in);
@@ -51,7 +48,7 @@ void *power(void *args) {
         addr_out.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         // sem_wait(arguments.semaphoreEmpty);
         // отправить результат
-
+        printf("client 'power' send data %f \n", result);
         connect(sock_out, (struct sockaddr *)&addr_out, sizeof(addr_out));
         send(sock_out, &result, sizeof(result), 0);
         close(sock_out);
