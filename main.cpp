@@ -19,6 +19,8 @@
 #include <signal.h>
 #include "summa.cpp"
 #include "division.cpp"
+#include "power.cpp"
+#include "subtraction.cpp"
 
 // main
 sem_t client_main_empty, client_main_full;
@@ -28,10 +30,17 @@ sem_t server_main_empty, server_main_full;
 sem_t client_sum_empty, client_sum_full;
 sem_t server_sum_empty, server_sum_full;
 
-
 // division
 sem_t client_div_empty, client_div_full;
 sem_t server_div_empty, server_div_full;
+
+// power
+sem_t client_pow_empty, client_pow_full;
+sem_t server_pow_empty, server_pow_full;
+
+// sub
+sem_t client_sub_empty, client_sub_full;
+sem_t server_sub_empty, server_sub_full;
 
 double result = 0.0;
 
@@ -89,7 +98,7 @@ void handleError(int code) {
 int main() {
     std::printf("main thread start\n");
 
-    pthread_t threadSum, threadDiv, threadMainServer, threadMainClient;
+    pthread_t threadSum, threadDiv, threadPow, threadSub, threadMainServer, threadMainClient;
 
     int status1;
     int status_addr;
@@ -102,6 +111,8 @@ int main() {
 
     SummaInitArgs summaInitArgs = {&server_sum_empty, &client_sum_empty, &server_main_empty, &client_main_empty};
     DivisionInitArgs divInitArgs = {&server_div_empty, &client_div_empty, &server_main_empty, &client_main_empty};
+    PowerInitArgs powInitArgs = {&server_pow_empty, &client_pow_empty, &server_main_empty, &client_main_empty};
+    SubInitArgs subInitArgs = {&server_sub_empty, &client_sub_empty, &server_main_empty, &client_main_empty};
 
     sem_init(&server_sum_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
     sem_init(&client_sum_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
@@ -109,15 +120,16 @@ int main() {
     sem_init(&client_main_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
     sem_init(&server_div_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
     sem_init(&client_div_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
-
-    sum_thread_state = 1;
-    div_thread_state = 1;
-    pow_thread_state = 1;
-    sub_thread_state = 1;
+    sem_init(&server_pow_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
+    sem_init(&client_pow_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
+    sem_init(&server_sub_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
+    sem_init(&client_sub_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
 
     status1 = pthread_create(&threadMainServer, NULL, serverThread, NULL); handleError(status1);
     status1 = pthread_create(&threadSum, NULL, summa, &summaInitArgs); handleError(status1);
     status1 = pthread_create(&threadDiv, NULL, division, &divInitArgs); handleError(status1);
+    status1 = pthread_create(&threadPow, NULL, power, &powInitArgs); handleError(status1);
+    status1 = pthread_create(&threadSub, NULL, subtraction, &subInitArgs); handleError(status1);
     status1 = pthread_create(&threadMainClient, NULL, clientMainThread, NULL); handleError(status1);
 
 
@@ -146,6 +158,28 @@ int main() {
 
     sem_wait(&server_main_full);
     printf("%f\n", result);
+
+    ///
+
+    PowerArgs powArgs = {a: 2, b: 8};
+    clientStruct.values = &powArgs;
+    clientStruct.port = POW_SERVER_PORT;
+    sem_post(&server_pow_empty);
+
+    sem_wait(&server_main_full);
+    printf("%f\n", result);
+
+    ///
+
+    SubArgs subArgs = {a: 36, b: 42};
+    clientStruct.values = &subArgs;
+    clientStruct.port = SUB_SERVER_PORT;
+    sem_post(&server_sub_empty);
+
+    sem_wait(&server_main_full);
+    printf("%f\n", result);
+
+    ///
 
     status1 = pthread_join(threadMainServer, (void**)&status_addr);
     handleError(status1);
