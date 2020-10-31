@@ -14,48 +14,44 @@
 #include <semaphore.h>
 #include <netinet/in.h>
 #include <iostream>
-#include <vector>
 #include <sstream>
-#include "summa.cpp"
 #include <pthread.h>
 #include <signal.h>
+#include "summa.cpp"
+#include "division.cpp"
 
-#define MAIN_SERVER_PORT 6969
-#define BUFSIZE 11
-int sock;
-struct sockaddr_in addr;
-char buf[BUFSIZE];
-
+// main
 sem_t client_main_empty, client_main_full;
 sem_t server_main_empty, server_main_full;
 
+// summa
 sem_t client_sum_empty, client_sum_full;
 sem_t server_sum_empty, server_sum_full;
 
 
+// division
+sem_t client_div_empty, client_div_full;
+sem_t server_div_empty, server_div_full;
 
 double result = 0.0;
 
-struct client_struct {
-    void *values;
-    int port;
-};
+
 
 client_struct clientStruct;
 
 void *serverThread(void *args) {
+    int sock;
+    struct sockaddr_in addr;
     double bytes_read, total = 0;
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     addr.sin_family = AF_INET;
     addr.sin_port = htons(MAIN_SERVER_PORT);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    double value;
     bind(sock, (struct sockaddr *)&addr, sizeof(addr));
     sem_post(&server_main_empty);
     while (1) {
         int ConnectFD = accept(sock, NULL, NULL);
-        bytes_read = recvfrom(sock, &value, sizeof(value), 0, NULL, NULL);
-        printf("%f\n", value);
+        bytes_read = recvfrom(sock, &result, sizeof(result), 0, NULL, NULL);
         close(ConnectFD);
         sem_post(&server_main_full);
     }
@@ -93,9 +89,9 @@ void handleError(int code) {
 int main() {
     std::printf("main thread start\n");
 
-    pthread_t threadSum, threadMainServer, threadMainClient;
+    pthread_t threadSum, threadDiv, threadMainServer, threadMainClient;
 
-    int status1, status2;
+    int status1;
     int status_addr;
     int status_addr2;
     int a, b, c;
@@ -104,42 +100,60 @@ int main() {
 
 //    std::printf("%d %d %d", a, b, c);
 
-    SummaInitArgs summaArgs = {&server_sum_empty, &client_sum_empty, &server_main_empty, &client_main_empty};
+    SummaInitArgs summaInitArgs = {&server_sum_empty, &client_sum_empty, &server_main_empty, &client_main_empty};
+    DivisionInitArgs divInitArgs = {&server_div_empty, &client_div_empty, &server_main_empty, &client_main_empty};
 
     sem_init(&server_sum_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
     sem_init(&client_sum_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
     sem_init(&server_main_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
     sem_init(&client_main_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
+    sem_init(&server_div_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
+    sem_init(&client_div_empty,PTHREAD_PROCESS_SHARED,0); // Установлен в 0
 
-    status2 = pthread_create(&threadMainServer, NULL, serverThread, NULL);
-    status1 = pthread_create(&threadSum, NULL, summa, &summaArgs);
-    status1 = pthread_create(&threadMainClient, NULL, clientMainThread, &summaArgs);
+    sum_thread_state = 1;
+    div_thread_state = 1;
+    pow_thread_state = 1;
+    sub_thread_state = 1;
+
+    status1 = pthread_create(&threadMainServer, NULL, serverThread, NULL); handleError(status1);
+    status1 = pthread_create(&threadSum, NULL, summa, &summaInitArgs); handleError(status1);
+    status1 = pthread_create(&threadDiv, NULL, division, &divInitArgs); handleError(status1);
+    status1 = pthread_create(&threadMainClient, NULL, clientMainThread, NULL); handleError(status1);
 
 
-    SummaArgs args = {a: 10, b: 55};
-    clientStruct.values = &args;
-    clientStruct.port = 6970;
+    SummaArgs sumArgs = {a: 10, b: 55};
+    clientStruct.values = &sumArgs;
+    clientStruct.port = SUMMA_SERVER_PORT;
     sem_post(&server_sum_empty);
 
     sem_wait(&server_main_full);
-    args = {a: 16, b: 22};
-    clientStruct.values = &args;
-    clientStruct.port = 6970;
+    printf("%f\n", result);
+
+    sumArgs = {a: 16, b: 22};
+    clientStruct.values = &sumArgs;
+    clientStruct.port = SUMMA_SERVER_PORT;
     sem_post(&server_sum_empty);
 
+    sem_wait(&server_main_full);
+    printf("%f\n", result);
+
+    ///
+
+    DivisionArgs divArgs = {a: 25, b: 5};
+    clientStruct.values = &divArgs;
+    clientStruct.port = DIVISION_SERVER_PORT;
+    sem_post(&server_div_empty);
+
+    sem_wait(&server_main_full);
+    printf("%f\n", result);
+
+    status1 = pthread_join(threadMainServer, (void**)&status_addr);
     handleError(status1);
-    handleError(status2);
-
-//    while(1) {
-//        sem_wait(&full);
-//        printf("testtest\n");
-//        sem_post(&empty);
-//    }
-
-
-    status2 = pthread_join(threadMainServer, (void**)&status_addr);
     status1 = pthread_join(threadSum, (void**)&status_addr);
+    handleError(status1);
     status1 = pthread_join(threadMainClient, (void**)&status_addr);
+    handleError(status1);
+
 //    pthread_kill(threadMainServer, SIGUSR1);
 //    pthread_kill(threadSum, SIGUSR1);
 //    pthread_kill(threadMainClient, SIGUSR1);
